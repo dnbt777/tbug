@@ -23,4 +23,4 @@ tdiff.capture(tensor, name="section_name.child_name", project="project_name_or_r
 
 ## analysis
 
-see simple_usage_example.ipynb
+see simple_analysis_example.ipynb
