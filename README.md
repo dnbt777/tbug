@@ -8,9 +8,7 @@ testing framework for debugging tensors across runs and projects
 
 ## logging
 
-you must first log the tensors
-
-to do this:
+you must first log the tensors during a run. to do this, add the following to your code:
 
 ```
 import tdiff
@@ -20,6 +18,8 @@ import tdiff
 
 tdiff.capture(tensor, name="section_name.child_name", project="project_name_or_run_id_here")
 ```
+
+you need to not do compilation for this to work (i.e. jit if in jax, or pytorch.compile if using pytorch)
 
 ## analysis
 
