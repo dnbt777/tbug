@@ -1,7 +1,7 @@
 # tbug
 <div style="text-align:center;">
   <img src="https://github.com/user-attachments/assets/8ad597a3-4605-4f29-b06b-8b1ab6018216" width=400 height=400></img>
-  <p>small testing framework for debugging tensors across different runs and projects</p>
+  <p>debug tensors across different runs and projects</p>
 </div>
 
 # install
