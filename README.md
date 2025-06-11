@@ -4,6 +4,10 @@
   <p>debug tensors across different runs and projects</p>
 </div>
 
+# example
+[simple example](https://github.com/dnbt777/tbug/blob/main/simple_analysis_example.ipynb)
+
+
 # install
 `git clone https://github.com/dnbt777/tbug/`
 
@@ -26,4 +30,4 @@ you need to not do compilation for this to work (i.e. jit if in jax, or pytorch.
 
 ## analysis
 
-see simple_analysis_example.ipynb
+see [simple_analysis_example.ipynb](https://github.com/dnbt777/tbug/blob/main/simple_analysis_example.ipynb)
