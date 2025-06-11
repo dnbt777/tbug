@@ -1,5 +1,5 @@
 # tbug
-testing framework for debugging tensors across runs and projects
+testing framework for debugging tensors across different runs and projects
 
 # install
 `git clone https://github.com/dnbt777/tbug/`
