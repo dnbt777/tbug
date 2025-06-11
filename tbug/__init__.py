@@ -1,19 +1,19 @@
 # ========================
-# file: tdiff/__init__.py
+# file: tbug/__init__.py
 # ========================
-"""tdiff – minimal tensor diffing toolkit.
+"""tbug – minimal tensor diffing toolkit.
 
 Functions
 ---------
-capture(arr, name, project, root='tdiff_captures')
+capture(arr, name, project, root='tbug_captures')
     Persist *arr* under *root*/*project*/*name*.npy in a framework-agnostic way
     (supports NumPy, PyTorch, TensorFlow, JAX).
 
 Notes
 -----
 *  Data are kept in NumPy's .npy format which already records shape & dtype.
-*  Multiple projects can be compared with `tdiff.checklist` and explored
-   visually with `tdiff.compare`.
+*  Multiple projects can be compared with `tbug.checklist` and explored
+   visually with `tbug.compare`.
 """
 
 from pathlib import Path
@@ -56,7 +56,7 @@ def _to_numpy(arr):
     except Exception as e:
         raise TypeError(f"Unsupported array type or content: {type(arr)}") from e
 
-def capture(arr, name: str, project: str, root: str = "tdiff_captures") -> Path:
+def capture(arr, name: str, project: str, root: str = "tbug_captures") -> Path:
     """Save array to .npy and metadata (.json)."""
     np_arr, orig_dtype = _to_numpy(arr)
     proj_dir = Path(root).expanduser().resolve() / project
@@ -78,5 +78,5 @@ from importlib import import_module as _imp
 
 def __getattr__(item):
     if item in {"checklist", "compare"}:
-        return _imp(f"tdiff.{item}")
+        return _imp(f"tbug.{item}")
     raise AttributeError(item)

@@ -1,5 +1,5 @@
 # ==========================
-# file: tdiff/checklist.py
+# file: tbug/checklist.py
 # ==========================
 """Utilities to create a consistency checklist across projects.
 
@@ -140,7 +140,7 @@ def _compare(                            # pylint: disable=too-many-branches
 # Public API                                                                  #
 # --------------------------------------------------------------------------- #
 def make_checklist(
-    root: str = "tdiff_captures",
+    root: str = "tbug_captures",
 ) -> Dict[str, Tuple[Union[bool, None], List[str]]]:
     """
     Build ``{tensor-name: (status, reasons)}``.
@@ -171,7 +171,7 @@ def make_checklist(
 
 
 def print_checklist(
-    root: str = "tdiff_captures",
+    root: str = "tbug_captures",
     *,
     section_order: Union[str, List[str], None] = None,
 ) -> None:

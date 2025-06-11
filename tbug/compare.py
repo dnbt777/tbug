@@ -1,5 +1,5 @@
 # ==========================
-# file: tdiff/compare.py
+# file: tbug/compare.py
 # ==========================
 """
 Visual comparison of tensors captured from multiple projects.
@@ -66,7 +66,7 @@ def _load_by_name(
             arr.dtype.kind == "V"
             or not (np.issubdtype(arr.dtype, np.number) or arr.dtype == np.bool_)
         ):
-            print(f"[tdiff] Converting {f} from {arr.dtype} → float32")
+            print(f"[tbug] Converting {f} from {arr.dtype} → float32")
             arr = arr.view(np.uint16).astype(np.float32)
 
         tensors.append(arr)
@@ -101,7 +101,7 @@ def _parse_index(idx: Any) -> Any:
 def show_values(
     name: str,
     *,
-    root: str = "tdiff_captures",
+    root: str = "tbug_captures",
     projects: list[str] | None = None,
     index: Any = None,
     canvas_size: Tuple[float, float] = (8, 4),
@@ -154,7 +154,7 @@ def show_values(
 def show(
     name: str,
     *,
-    root: str = "tdiff_captures",
+    root: str = "tbug_captures",
     cmap: str = "coolwarm",
     alpha: float = 0.8,
     mode: str = "diff",             # 'diff' | 'abs' | 'sign' | 'ratio'
@@ -405,7 +405,7 @@ def show(
 def load(
     name: str,
     *,
-    root: str = "tdiff_captures",
+    root: str = "tbug_captures",
     projects: list[str] | None = None,
     index: Any = None,
 ) -> np.ndarray | dict[str, np.ndarray]:
