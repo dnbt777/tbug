@@ -1,5 +1,8 @@
 # tbug
-testing framework for debugging tensors across different runs and projects
+<div style="text-align:center;">
+  <img src="https://github.com/user-attachments/assets/8ad597a3-4605-4f29-b06b-8b1ab6018216" width=400 height=400></img>
+  <p>testing framework for debugging tensors across different runs and projects</p>
+</div>
 
 # install
 `git clone https://github.com/dnbt777/tbug/`
