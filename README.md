@@ -26,7 +26,7 @@ import tdiff
 tdiff.capture(tensor, name="section_name.child_name", project="project_name_or_run_id_here")
 ```
 
-you need to not do compilation for this to work (i.e. jit if in jax, or pytorch.compile if using pytorch)
+you need to disable compilation for this to work (i.e. jit if in jax, or pytorch.compile if using pytorch)
 
 ## analysis
 
