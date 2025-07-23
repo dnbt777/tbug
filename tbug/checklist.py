@@ -1,10 +1,7 @@
-# ==========================
-# file: tbug/checklist.py
-# ==========================
 """Utilities to create a consistency checklist across projects.
 
 The “dtype” comparison is now done with the *string stored in the JSON
-side-car* for each tensor capture – no NumPy dtype objects are involved.
+side‑car* for each tensor capture – no NumPy dtype objects are involved.
 """
 
 from pathlib import Path
@@ -20,15 +17,12 @@ NA    = "N/A"
 # Helpers                                                                     #
 # --------------------------------------------------------------------------- #
 
-# ---------------------------------------------------------------------------
-# Treat these spellings as identical dtypes
-# ---------------------------------------------------------------------------
 EQUIVALENT_DTYPES = [
     ("torch.bfloat16", "bfloat16", "np.bfloat16"),
     ("torch.float16",  "float16",  "np.float16"),
     ("torch.float32",  "float32",  "np.float32"),
     ("torch.float64",  "float64",  "np.float64"),
-    # add more tuples here if needed
+    ("torch.complex64", "complex64", "jax.complex64"),
 ]
 
 # build a fast alias-to-canonical lookup
@@ -139,6 +133,7 @@ def _compare(                            # pylint: disable=too-many-branches
 # --------------------------------------------------------------------------- #
 # Public API                                                                  #
 # --------------------------------------------------------------------------- #
+
 def make_checklist(
     root: str = "tbug_captures",
 ) -> Dict[str, Tuple[Union[bool, None], List[str]]]:
@@ -176,7 +171,9 @@ def print_checklist(
     section_order: Union[str, List[str], None] = None,
 ) -> None:
     """
-    Human-friendly report: table + mismatch details (dtype/shape from JSON).
+    Human‑friendly report: table + mismatch details (dtype/shape from JSON).
+    If a tensor appears in only one project, the project name is shown in the
+    reason column, e.g. ``only one project (projA)``.
     """
     # ---------------------------- gather
     results = make_checklist(root)
@@ -215,7 +212,8 @@ def print_checklist(
         elif ok is False:
             icon, reason_text = CROSS, ",".join(reasons)
         else:  # ok is None  → only one project
-            icon, reason_text = NA, "only one project"
+            proj_name = project_files[name][0].parent.name if project_files[name] else "unknown"
+            icon, reason_text = NA, f"only one project ({proj_name})"
 
         print(f"{name.ljust(col_w)}{icon}     {reason_text}")
 

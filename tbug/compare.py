@@ -27,6 +27,70 @@ from matplotlib.widgets import Cursor
 from mpl_toolkits.mplot3d import Axes3D       # noqa: F401 – registers 3-D
 
 # --------------------------------------------------------------------------- #
+# New helper: apply an arbitrary view-transform to each tensor                #
+# --------------------------------------------------------------------------- #
+from collections.abc import Callable
+from typing import Sequence
+
+def _apply_view_function(
+    tensors: list[np.ndarray],
+    view_function: Callable[[np.ndarray], np.ndarray] | Sequence[Callable[[np.ndarray], np.ndarray]] | None,
+) -> list[np.ndarray]:
+    """
+    Apply *view_function* to each tensor.
+
+    Parameters
+    ----------
+    tensors
+        List of tensors loaded from disk.
+    view_function
+        • None .......................... → tensors are returned unchanged.  
+        • Single callable ............... → callable is applied to every tensor.  
+        • Tuple / list of callables ..... → ``view_function[i]`` is applied to
+                                            ``tensors[i]`` (lengths must match).
+
+    Returns
+    -------
+    List[np.ndarray]
+        The transformed tensors.
+
+    Raises
+    ------
+    ValueError
+        If ``len(view_function)`` does not match ``len(tensors)``.
+    TypeError
+        If *view_function* is neither *None*, a callable, nor a
+        sequence of callables.
+    """
+    if view_function is None:
+        return tensors
+
+    if callable(view_function):
+        return [view_function(t) for t in tensors]
+
+    if isinstance(view_function, (list, tuple)):
+        if len(view_function) != len(tensors):
+            raise ValueError(
+                "Tuple of view_functions must have the same length as the "
+                f"number of tensors ({len(tensors)})."
+            )
+        transformed: list[np.ndarray] = []
+        for fn, t in zip(view_function, tensors):
+            if fn is None:
+                transformed.append(t)
+            elif callable(fn):
+                transformed.append(fn(t))
+            else:
+                raise TypeError("Each item in view_function must be callable or None.")
+        return transformed
+
+    raise TypeError("view_function must be a callable, a tuple/list of callables, or None.")
+
+
+
+
+
+# --------------------------------------------------------------------------- #
 # Helpers                                                                     #
 # --------------------------------------------------------------------------- #
 def _load_by_name(
@@ -75,35 +139,18 @@ def _load_by_name(
     if not tensors:
         raise FileNotFoundError(f"No '{name}.npy' found under {root}")
 
-    if any(s != oshapes[0] for s in oshapes):
-        raise ValueError(
-            "Tensors have differing shapes; cannot compare:\n"
-            + "\n".join(f"• {p}: {s}" for p, s in zip(pnames, oshapes))
-        )
-
     return tensors, pnames, odtypes, oshapes
 
 
-def _parse_index(idx: Any) -> Any:
-    """Turn a string / int / slice / tuple into a slice usable as t[...]"""
-    if idx is None:
-        return None
-    if isinstance(idx, str):
-        try:
-            return eval(f"np.s_[{idx}]", {"np": np})
-        except Exception as e:
-            raise ValueError(f"Invalid index spec '{idx}': {e}") from None
-    return idx
-
 # --------------------------------------------------------------------------- #
-# Public helpers                                                              #
+# Public helper: show_values  (1-D raw plots)                                 #
 # --------------------------------------------------------------------------- #
 def show_values(
     name: str,
     *,
     root: str = "tbug_captures",
     projects: list[str] | None = None,
-    index: Any = None,
+    view_function: Callable[[np.ndarray], np.ndarray] | Sequence[Callable[[np.ndarray], np.ndarray]] | None = None,
     canvas_size: Tuple[float, float] = (8, 4),
     cmap: str = "tab10",
     alpha: float = 0.9,
@@ -111,13 +158,16 @@ def show_values(
 ) -> None:
     """
     Plot the *raw values* of one or more tensors (1-D only).
+
+    The optional *view_function* lets you transform each tensor before plotting,
+    e.g. ``lambda x: x[0, ...]`` for slicing or any other custom operation.
+    A single callable is applied to every tensor; a tuple/list allows one
+    callable per project.
     """
     root_path = Path(root).expanduser().resolve()
     tensors, pnames, odtypes, oshapes = _load_by_name(name, root_path, projects)
 
-    slc = _parse_index(index)
-    if slc is not None:
-        tensors = [t[slc] for t in tensors]
+    tensors = _apply_view_function(tensors, view_function)
 
     if just_print:
         for pname, tensor in zip(pnames, tensors):
@@ -128,9 +178,8 @@ def show_values(
     fig, ax = plt.subplots(figsize=canvas_size)
     ax.set_title(
         f"Tensor '{name}' – orig shape: {oshapes[0]}  dtype: {odtypes[0]}"
-        + (f"  slice: {index}" if index else "")
+        + ("  view_function applied" if view_function else "")
     )
-    ax.set_xlabel("index")
     ax.set_ylabel("value")
 
     for i, (tensor, lbl) in enumerate(zip(tensors, pnames)):
@@ -162,7 +211,7 @@ def show(
     projects: list[str] | None = None,
     zero_black: bool = False,
     diff_red: bool = False,
-    index: Any = None,
+    view_function: Callable[[np.ndarray], np.ndarray] | Sequence[Callable[[np.ndarray], np.ndarray]] | None = None,
     canvas_size: Tuple[float, float] = (6, 6),
     just_print: bool = False,
 ) -> None:
@@ -172,15 +221,23 @@ def show(
     root_path = Path(root).expanduser().resolve()
     tensors, pnames, odtypes, oshapes = _load_by_name(name, root_path, projects)
 
-    slc = _parse_index(index)
-    if slc is not None:
-        tensors = [t[slc] for t in tensors]
+    tensors = _apply_view_function(tensors, view_function)
 
     if just_print:
         for pname, tensor in zip(pnames, tensors):
             print(f"\nProject: {pname}")
             print(tensor)
         return
+
+    # Check shapes after view_function for comparison
+    effective_shapes = [t.shape for t in tensors]
+    if len(tensors) > 1 and any(s != effective_shapes[0] for s in effective_shapes):
+        msg = "Tensors have differing shapes after view_function; cannot compare:\n"
+        for p, os, es in zip(pnames, oshapes, effective_shapes):
+            msg += f"• {p}: {os} → {es}\n"
+        raise ValueError(msg)
+
+    view_note = "  view_function applied" if view_function else ""
 
     # ------------------------------------------------------------------ #
     # 1-D branch                                                          #
@@ -191,7 +248,7 @@ def show(
                 name,
                 root=root,
                 projects=projects,
-                index=index,
+                view_function=view_function,
                 canvas_size=canvas_size,
                 just_print=just_print,
             )
@@ -213,14 +270,23 @@ def show(
         elif mode != "diff":
             raise ValueError(f"Unknown mode '{mode}' for 1-D diff.")
 
+        shape_note = (
+            f"shapes differ: {oshapes[0]} ≠ {oshapes[1]}" 
+            if oshapes[0] != oshapes[1] 
+            else f"shape: {oshapes[0]}"
+        )
+        dtype_note = (
+            f"dtypes differ: {odtypes[0]} ≠ {odtypes[1]}" 
+            if odtypes[0] != odtypes[1] 
+            else f"dtype: {odtypes[0]}"
+        )
+
         x = np.arange(diff.shape[0])
         fig, ax = plt.subplots(figsize=canvas_size)
         ax.set_title(
-            f"1-D {mode} for '{name}' – orig shape: {oshapes[0]}  "
-            f"dtypes: {odtypes[0]} vs {odtypes[1]}"
-            + (f"  slice: {index}" if index else "")
+            f"1-D {mode} for '{name}' – orig {shape_note}  {dtype_note}"
+            + view_note
         )
-        ax.set_xlabel("index")
         ax.set_ylabel(mode)
 
         if diff_red:
@@ -265,6 +331,17 @@ def show(
             vals_for_cb = diff3d[tuple(coords.T)]
             colours = vals_for_cb
 
+        shape_note = (
+            f"shapes differ: {oshapes[0]} ≠ {oshapes[1]}" 
+            if oshapes[0] != oshapes[1] 
+            else f"shape: {oshapes[0]}"
+        )
+        dtype_note = (
+            f"dtypes differ: {odtypes[0]} ≠ {odtypes[1]}" 
+            if odtypes[0] != odtypes[1] 
+            else f"dtype: {odtypes[0]}"
+        )
+
         fig = plt.figure(figsize=canvas_size)
         ax = fig.add_subplot(111, projection="3d")
         ax.set_box_aspect(diff3d.shape[::-1])
@@ -285,7 +362,8 @@ def show(
         ax.set_zlabel("Z")
         ax.set_title(
             f"3-D {mode} for '{name}'\n"
-            f"orig shape: {oshapes[0]}  dtypes: {odtypes[0]} vs {odtypes[1]}"
+            f"orig {shape_note}  {dtype_note}"
+            + view_note
         )
         if vals_for_cb is not None:
             fig.colorbar(sc, ax=ax, fraction=0.03, pad=0.05)
@@ -303,7 +381,7 @@ def show(
         title = (
             f"Tensor '{name}'\n"
             f"orig shape: {oshapes[0]}  dtype: {odtypes[0]}"
-            + (f"  slice: {index}" if index else "")
+            + view_note
         )
     else:
         ref, other = tensors
@@ -328,16 +406,22 @@ def show(
             raise ValueError(f"Unknown mode '{mode}'.")
 
         mn, mx = np.nanmin(im_data), np.nanmax(im_data)
+
+        shape_note = (
+            f"shapes differ: {oshapes[0]} ≠ {oshapes[1]}" 
+            if oshapes[0] != oshapes[1] 
+            else f"shape: {oshapes[0]}"
+        )
         dtype_note = (
-            f"dtype mismatch: {odtypes[0]} ≠ {odtypes[1]}"
-            if odtypes[0] != odtypes[1]
+            f"dtypes differ: {odtypes[0]} ≠ {odtypes[1]}" 
+            if odtypes[0] != odtypes[1] 
             else f"dtype: {odtypes[0]}"
         )
         title = (
             f"{mode} for '{name}'\n"
-            f"orig shape: {oshapes[0]}  {dtype_note}\n"
+            f"orig {shape_note}  {dtype_note}"
+            + view_note + "\n"
             f"min: {mn:.4g}, max: {mx:.4g}, diff-count: {diff_count:,}"
-            + (f"\n slice: {index}" if index else "")
         )
 
     # ------------------------------------------------------------------ #
@@ -407,16 +491,17 @@ def load(
     *,
     root: str = "tbug_captures",
     projects: list[str] | None = None,
-    index: Any = None,
+    view_function: Callable[[np.ndarray], np.ndarray] | Sequence[Callable[[np.ndarray], np.ndarray]] | None = None,
 ) -> np.ndarray | dict[str, np.ndarray]:
     """
-    Load a tensor (optionally sliced) from one or more projects.
+    Load a tensor (optionally transformed) from one or more projects.
+
+    Returns a single tensor when only one project matches, otherwise a
+    ``{project_name: tensor}`` dictionary.
     """
     root_path = Path(root).expanduser().resolve()
     tensors, pnames, _, _ = _load_by_name(name, root_path, projects)
 
-    slc = _parse_index(index)
-    if slc is not None:
-        tensors = [t[slc] for t in tensors]
+    tensors = _apply_view_function(tensors, view_function)
 
     return tensors[0] if len(tensors) == 1 else dict(zip(pnames, tensors))
